@@ -13,7 +13,6 @@ Attribute VB_Name = "ExtensoACD"
 '               3) Suporta valores até $922.337.203.685.477,5807
 '               4) Não foi feito nenhum teste com valores negativos
 '
-'Em 20/08/2020 retirei todas as vírgulas, ajustei o Um Mil e os centavos
 'Gramática portuguesa:
 'Regra Geral: Não se intercala a conjunção 'e' e nem vírgula entre posições de milhar.
 'Exceção: Se a milhar posterior for menor que 100 ou for centena inteira (100,200,300...)
@@ -63,8 +62,8 @@ On Error GoTo Fim_Err
   Selection.ExtendMode = False
   
   Selection.MoveRight Unit:=wdCharacter, Count:=1, Extend:=wdMove
-   
-  strTmp = InicioExtenso & strValor & FimExtenso
+  'caso queira tudo em minúscula, tire o UCASE abaixo 
+  strTmp = InicioExtenso & UCASE(strValor) & FimExtenso
   
   x = Len(strTmp)
   If x > 0 And strTmp <> " " Then
@@ -324,7 +323,7 @@ Private Function ConcatCentenas(N As Currency) As String
       If SingleAlg(m) Then
         s = s & " e "
       Else
-        '       s = s & ", " 'retire aqui sem vinurla milhar
+        '       s = s & ", " 'retire aqui sem vírgula no milhar
        s = s & " "
       End If
     Else
