@@ -1,6 +1,6 @@
 Attribute VB_Name = "ExtensoACD"
 'Macro:         ACD_Extenso
-'Versão:        2.4 (Última atualização 17/08/2020)
+'Versão:        3.1 (Última atualização 20/08/2020)
 'Finalidade:    Converte um valor numérico em uma string
 '               com o extenso monetário correspondente.
 'Linguagem:     VBA
@@ -13,94 +13,72 @@ Attribute VB_Name = "ExtensoACD"
 '               3) Suporta valores até $922.337.203.685.477,5807
 '               4) Não foi feito nenhum teste com valores negativos
 '
-'Início da rotina ACD_Extenso()
+'Em 20/08/2020 retirei todas as vírgulas, ajustei o Um Mil e os centavos
+'Gramática portuguesa:
+'Regra Geral: Não se intercala a conjunção 'e' e nem vírgula entre posições de milhar.
+'Exceção: Se a milhar posterior for menor que 100 ou for centena inteira (100,200,300...)
+'Alguns gramáticos não aceitam essa exceção e outros já aceitam a vírgula.
+'Nota: Segundo diversos gramáticos nunca deverá ser usada a vírgula na escrita de numerais por extenso.
+
 Sub ACD_Extenso()
-'Verifica se houve erro e pulo para Fim:
+
 On Error GoTo Fim_Err
-'declara as variáveis
-  Dim strValor As String        'alfanumérico
-  Dim strRetorno As String      'alfanumério
-  Dim blnNoInicio As Boolean    'Falso/verdadeiro
-  Dim strTmp As String          'alfanumérico
-  Dim x As Integer              'inteiro
-      
-  'Verifica que não existe algo selecionado
-  'atribui Verdadeiro para blnInicio e sai da macro
+
+  Dim strValor As String
+  Dim strRetorno As String
+  Dim blnNoInicio As Boolean
+  Dim strTmp As String
+  Dim x As Integer
+  
+  Dim InicioExtenso As String
+  Dim FimExtenso As String
+  
+  InicioExtenso = " (-"
+  FimExtenso = "-) "
+  
   If Selection.Type = wdSelectionIP And Selection.Start = 0 Then blnNoInicio = True
   If blnNoInicio = True Then Exit Sub
   
-  'Move para esquerda
-  'unit = por caracter
-  'count = um por vez
-  'Extend = move para o final do número extendido
   Selection.MoveLeft Unit:=wdCharacter, Count:=1, Extend:=wdExtend
-  'quando achar um espaço em branco
+  
   While Selection.Text = " "
-    'se for início do documento e não achou espaço sai fora
+  
     If WordBasic.AtStartOfDocument() Then Exit Sub
-    'volta onde estava sem marcar nada
-    Selection.ExtendMode = False
-     'Move para esquerda
-     'unit = por caracter
-     'count = um por vez
-     'Extend = move para final do número e pula para esquerda
-    Selection.MoveLeft Unit:=wdCharacter, Count:=1, Extend:=wdMove
+      Selection.ExtendMode = False
+      Selection.MoveLeft Unit:=wdCharacter, Count:=1, Extend:=wdMove
   Wend
-  'volta para direita selecionando todo o número
+  
   Selection.MoveRight Unit:=wdCharacter, Count:=1, Extend:=wdMove
   Selection.ExtendMode = True
-  'procura na seleção
+  
   With Selection.Find
-      'em direção ao início
       .Forward = False
-      'quando encontrar o fim, para.
       .Wrap = wdFindStop
-      'procura o espaço em branco
       .Execute FindText:=" "
   End With
-  'exibe texto na janela imediata
-  Debug.Print Selection.Text
-  'atribui texto selecionado à macro
-  'o CCur é para transformar de texto para monetário
-  strValor = Extenso(CCur(Selection.Text))
-  'desmarca seleção
-  Selection.ExtendMode = False
-  'volta para direita um caracter
-  Selection.MoveRight Unit:=wdCharacter, Count:=1, Extend:=wdMove
-  'esta linha abaixo, retorna os parenteses e hífens
-  'caso não queira nada apenas o extenso,
-  'mude-a para  strTmp = strValor
-   
-  'Deixa apenas a primeira letra maiúscula
-  strTmp = " (-" & UCase(Left(strValor, 1)) & Trim$(Right(strValor, Len(strValor) - 1)) & "-)"
   
- ' strTmp = " (- " & Trim$(strValor) & " -)"
+  Debug.Print Selection.Text
+  strValor = Extenso(CCur(Selection.Text))
+  
+  Selection.ExtendMode = False
+  
+  Selection.MoveRight Unit:=wdCharacter, Count:=1, Extend:=wdMove
+   
+  strTmp = InicioExtenso & strValor & FimExtenso
+  
   x = Len(strTmp)
   If x > 0 And strTmp <> " " Then
-     ' transforma todo o extenso em maiúsculas
-     ' Para todas minúsculas use LCase(strTmp)
-     ' Para apenas as primeiras maiúsculas use essa abaixo
-     ' Selection.TypeText Text:=StrConv(strTmp, vbProperCase)
-     ' e inclui o extenso após o número
-     ' wdTitleSentence
-     ' Selection.TypeText Text:=UCase(strTmp)
      Selection.TypeText Text:=strTmp
-    ' selection.TypeText
-     
-     
    End If
-'Rotina para sair da macro
-Fim_Err: ' para tratar erros
+
+Fim_Err:
 
 Selection.ExtendMode = False
 Selection.MoveRight Unit:=wdCharacter, Count:=1, Extend:=wdMove
    Exit Sub
 
 End Sub
-'Fim da rotina extenso ACD_Extenso()
 
-'Função:        Extenso
-'Attribute VB_Name = "Extenso"
 Function Extenso( _
   Valor As Currency, _
   Optional MoedaNoSingular As String = "real", _
@@ -108,33 +86,53 @@ Function Extenso( _
   Optional CentavosNoSingular As String = "centavo", _
   Optional CentavosNoPlural As String = "centavos") _
 As String
-  Dim ParteInteira As Currency, ParteDecimal As Long
-  Dim s As String
   
-  ParteInteira = Fix(Valor)
-  ParteDecimal = Fix((Valor - ParteInteira) * 100)
+    Dim ParteInteira As Currency, ParteDecimal As Long
+    Dim s As String
+    
+    ParteInteira = Fix(Valor)
+    ParteDecimal = Fix((Valor - ParteInteira) * 100)
+    
+    s = ""
   
-  s = ""
-  If ParteInteira > 0 Then
-    s = ConcatCentenas(ParteInteira)
-    If s = "um" Then 'ParteInteira = 1 ou 1.0 ou 1# não funciona
-      s = s & " " & MoedaNoSingular
-    Else
-      s = s & " " & MoedaNoPlural
+    If ParteInteira = 0 Then
+    
+        If ParteDecimal > 0 Then
+            If ParteDecimal = 1 Then
+              s = s & "um " & CentavosNoSingular & " de " & MoedaNoSingular
+            Else
+              s = s & Centena(ParteDecimal) & " " & CentavosNoPlural & " de " & MoedaNoSingular
+            End If
+        End If
+        Extenso = s
+        Exit Function
+    
     End If
+  
+    If ParteInteira > 0 Then
+      
+      s = ConcatCentenas(ParteInteira)
+      If s = "um" Then
+        s = s & " " & MoedaNoSingular
+      Else
+        s = s & " " & MoedaNoPlural
+      End If
+      If ParteDecimal > 0 Then
+        s = s & " e "
+      End If
+      
+    End If
+  
     If ParteDecimal > 0 Then
-      s = s & " e "
+      If ParteDecimal = 1 Then
+        s = s & "um " & CentavosNoSingular
+      Else
+        s = s & Centena(ParteDecimal) & " " & CentavosNoPlural
+      End If
     End If
-  End If
-  
-  If ParteDecimal > 0 Then
-    If ParteDecimal = 1 Then
-      s = s & "um " & CentavosNoSingular
-    Else
-      s = s & Centena(ParteDecimal) & " " & CentavosNoPlural
-    End If
-  End If
-  Extenso = s
+
+    Extenso = s
+
 End Function
 
 Function Resto(A As Currency, B As Long) As Currency
@@ -159,135 +157,80 @@ Function DivInt(A As Currency, B As Long) As Currency
 End Function
 
 Private Function Unidade(N As Long) As String
-  Select Case N
-  Case 0
-    Unidade = ""
-  Case 1
-    Unidade = "um"
-  Case 2
-    Unidade = "dois"
-  Case 3
-    Unidade = "três"
-  Case 4
-    Unidade = "quatro"
-  Case 5
-    Unidade = "cinco"
-  Case 6
-    Unidade = "seis"
-  Case 7
-    Unidade = "sete"
-  Case 8
-    Unidade = "oito"
-  Case 9
-    Unidade = "nove"
-  Case Else
-    Err.Raise vbObjectError + 513, , "O número deve estar entre 0 e 9"
-  End Select
+    Dim varUnidade As Variant
+    varUnidade = Array("", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove")
+    Unidade = varUnidade(N)
 End Function
 
 Private Function Dezena(N As Long) As String
-  Dim d As Long, u As Long
-  Dim s As String
-  
-  d = N \ 10
-  u = N Mod 10
-  
-  Select Case d
-  Case 0
+    Dim d As Long, u As Long
+    Dim s As String
+    Dim varDezena1 As Variant, varDezena2 As Variant
+    
+    varDezena1 = Array("dez", "onze", "doze", "treze", "quatorze", _
+                      "quinze", "dezesseis", "dezessete", "dezoito", _
+                      "dezenove")
+    
+    varDezena2 = Array("vinte", "trinta", "quarenta", "cinquenta", _
+                       "sessenta", "setenta", "oitenta", "noventa")
+                      
+    d = N \ 10   '\ divide 2 numeros e retorna o resultado inteiro
+    u = N Mod 10 'mod retorna o resto da divisão
+
+If d = 0 Then
     Dezena = Unidade(N)
     Exit Function
-  Case 1
-    Select Case u
-    Case 0
-      Dezena = "dez"
-    Case 1
-      Dezena = "onze"
-    Case 2
-      Dezena = "doze"
-    Case 3
-      Dezena = "treze"
-    Case 4
-      Dezena = "quatorze"
-    Case 5
-      Dezena = "quinze"
-    Case 6
-      Dezena = "dezesseis"
-    Case 7
-      Dezena = "dezessete"
-    Case 8
-      Dezena = "dezoito"
-    Case 9
-      Dezena = "dezenove"
-    End Select
-    Exit Function
-  Case 2
-    s = "vinte"
-  Case 3
-    s = "trinta"
-  Case 4
-    s = "quarenta"
-  Case 5
-    s = "cinquenta"
-  Case 6
-    s = "sessenta"
-  Case 7
-    s = "setenta"
-  Case 8
-    s = "oitenta"
-  Case 9
-    s = "noventa"
-  Case Else
-    Err.Raise vbObjectError + 513, , "O número deve estar entre 0 e 99"
-  End Select
+Else
+    If d = 1 And u = 0 Then
+        Dezena = varDezena1(0)
+        Exit Function
     
-  If u = 0 Then
-    Dezena = s
-  Else
-    Dezena = s & " e " & Unidade(u)
-  End If
+    End If
+    If d = 1 And u > 0 Then
+        Dezena = varDezena1(u)
+        Exit Function
+    End If
+End If
+
+If d > 1 Then '-> mudei aqui para arrumar as centenas
+    If u = 0 Then
+        Dezena = varDezena2(d - 2) & Unidade(u)
+        Else
+        Dezena = varDezena2(d - 2) & " e " & Unidade(u)
+    End If
+End If
+
 End Function
 
 Private Function Centena(N As Long) As String
   Dim c As Long, d As Long
   Dim s As String
+  Dim varCentena As Variant
+  
+  varCentena = Array("duzentos", "trezentos", "quatrocentos", "quinhentos", _
+                     "seiscentos", "setecentos", "oitocentos", "novecentos")
+                     
   c = N \ 100
   d = N Mod 100
   
-  Select Case c
-  Case 0
+  If c = 0 Then
     Centena = Dezena(N)
     Exit Function
-  Case 1
+  End If
+  
+  If c = 1 Then
     If d = 0 Then
-      Centena = "cem"
+        Centena = "cem"
     Else
-      Centena = "cento e " & Dezena(d)
+        Centena = "cento e " & Dezena(d)
     End If
     Exit Function
-  Case 2
-    s = "duzentos"
-  Case 3
-    s = "trezentos"
-  Case 4
-    s = "quatrocentos"
-  Case 5
-    s = "quinhentos"
-  Case 6
-    s = "seiscentos"
-  Case 7
-    s = "setecentos"
-  Case 8
-    s = "oitocentos"
-  Case 9
-    s = "novecentos"
-  Case Else
-    Err.Raise vbObjectError + 513, , "O número deve estar entre 0 e 999"
-  End Select
+  End If
   
   If d = 0 Then
-    Centena = s
+    Centena = varCentena(c - 2)
   Else
-    Centena = s & " e " & Dezena(d)
+    Centena = varCentena(c - 2) & " e " & Dezena(d)
   End If
 End Function
 
@@ -311,12 +254,15 @@ Private Function ConcatCentenas(N As Currency) As String
   Dim Trilhao As Long, Bilhao As Long, _
     Milhao As Long, Milhar As Long, Um As Long, _
     Menores As Integer
+  Dim TiraUmMil As Boolean
   Dim s As String, m As Currency
+  
+  TiraUmMil = True 'Mude aqui para tirar o Um Mil (True=Mil False=Um Mil)
   
   s = ""
   m = N
   
-  Um = Resto(N, 1000)  'Um = N Mod 1000
+  Um = Resto(N, 1000)      'Um = N Mod 1000
   N = DivInt(N, 1000)      'N = N \ 1000
   Milhar = Resto(N, 1000)  'Milhar = N Mod 1000
   N = DivInt(N, 1000)      'N = N \ 1000
@@ -338,8 +284,9 @@ Private Function ConcatCentenas(N As Currency) As String
       If SingleAlg(m) Then
         s = s & " e "
       Else
-        s = s & ", "
-      End If
+        's = s & ", " 'retire aqui virguls
+        s = s & " "
+    End If
     Else
       s = s & " de"
     End If
@@ -357,7 +304,8 @@ Private Function ConcatCentenas(N As Currency) As String
       If SingleAlg(m) Then
         s = s & " e "
       Else
-        s = s & ", "
+        's = s & ", " 'retire aqui virgula
+        s = s & " "
       End If
     Else
       s = s & " de"
@@ -376,7 +324,8 @@ Private Function ConcatCentenas(N As Currency) As String
       If SingleAlg(m) Then
         s = s & " e "
       Else
-        s = s & ", "
+        '       s = s & ", " 'retire aqui sem vinurla milhar
+       s = s & " "
       End If
     Else
       s = s & " de"
@@ -386,57 +335,23 @@ Private Function ConcatCentenas(N As Currency) As String
   m = -(Milhar * 1000) + m
   Menores = Um
   If Milhar > 0 Then
+  
     s = s & Centena(Milhar) & " mil "
+    'AQUI TIRA O UM MIL
+    If TiraUmMil Then
+        If Left$(s, 7) = "um mil " Then s = Mid$(s, 4)
+    End If
+
+
     If Menores > 0 Then
       If SingleAlg(m) Then
-        s = s & " e "
+        s = s & "e "
       Else
-      '
-      
-      's = s & ", "
+       ' s = s & ", " '->Retirei aqui para não sair vígula no milhar
       End If
     End If
   End If
-  
   s = s & Centena(Um)
   ConcatCentenas = s
 End Function
-'fim da função
-
-'---------------------------------------------------------------------
-'início da macro WordExtenso()
-Public Sub WordExtenso()
-'/--------------------------------------------------------------------\
-' WordExtenso Macro                                                   '
-' Macro criada 24/05/2006 por Antonio Carlos Doná                     '
-' essa macro é para ser usada em formulários                          '
-' Obrigatoriamente os campos devem ser:                               '
-' Valor em currency                                                   '
-' ValorPorExtenso em string                                           '
-' Exemplo: você coloca um campo com o nome de valor                   '
-' e outro com o nome de ValorPorExtenso e em                          '
-' executar macro na Entreda: Wordextenso                              '
-'\--------------------------------------------------------------------/
-    'Verifica se houve erro e pulo para Fim:
-    On Error GoTo Fim
-    'Atribui tipo Moeda para variável xValor
-    Dim xValor As Currency
-    'Atribui a variável xValor o indicador Valor do documento
-    xValor = ActiveDocument.FormFields("Valor").Result
-    'Preenche o indicador ValorPorExtenso do documento com extenso e maiúscula
-    ActiveDocument.FormFields("ValorPorExtenso").Result = UCase(Módulo1.Extenso(xValor))
-  
-'Rotina para sair da macro
-WordExtenso_Fim:
-    Exit Sub
-
-' a rotina caso de erro
-' mostra o número e descrição do erro
-' e vai para outra rotina WordExtenso_Fim
-Fim:
-MsgBox " ERRO " & Err.Number & " - " & Err.Description
-    Resume WordExtenso_Fim
-End Sub
-'fim da macro WordExtenso()
-'---------------------------------------------------------------------
-
+'fim da função ACD_Extenso
