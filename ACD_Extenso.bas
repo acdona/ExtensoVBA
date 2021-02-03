@@ -1,6 +1,6 @@
 Attribute VB_Name = "ExtensoACD"
 'Macro:         ACD_Extenso
-'Versão:        3.1 (Última atualização 20/08/2020)
+'Versão:        3.2 (Última atualização 03/02/20210)
 'Finalidade:    Converte um valor numérico em uma string
 '               com o extenso monetário correspondente.
 'Linguagem:     VBA
@@ -10,74 +10,98 @@ Attribute VB_Name = "ExtensoACD"
 'Observações:   1) Sempre deixar um espaço em branco no início
 '                  do número a ser convertido para extenso.
 '               2) Favor reportar eventuais bugs.
-'               3) Suporta valores até $922.337.203.685.477,5807
+'               3) Suporta valores até $922.337.203.685.477,5807 que é o limite
+'                  da variável Currency -922.337.203.685.477,5808 até 922.337.203.685.477,5807
 '               4) Não foi feito nenhum teste com valores negativos
 '
 'Gramática portuguesa:
 'Regra Geral: Não se intercala a conjunção 'e' e nem vírgula entre posições de milhar.
-'Exceção: Se a milhar posterior for menor que 100 ou for centena inteira (100,200,300...)
+'Exceção: Se a milhar posterior for menor que 100 ou for centena inteira (Ex: 100,200,300...)
 'Alguns gramáticos não aceitam essa exceção e outros já aceitam a vírgula.
 'Nota: Segundo diversos gramáticos nunca deverá ser usada a vírgula na escrita de numerais por extenso.
-
+'<-------------------------------------------------------------------------------------------------------
+'Início da rotina ACD_Extenso()
 Sub ACD_Extenso()
-
+'Verifica se houve erro e pulo para Fim:
 On Error GoTo Fim_Err
-
-  Dim strValor As String
-  Dim strRetorno As String
-  Dim blnNoInicio As Boolean
-  Dim strTmp As String
-  Dim x As Integer
-  
-  Dim InicioExtenso As String
-  Dim FimExtenso As String
-  
+'declara as variáveis
+  Dim strValor As String        'alfanumérico
+  Dim strRetorno As String      'alfanumérico
+  Dim blnNoInicio As Boolean    'Falso/Verdadeiro
+  Dim strTmp As String          'alfanumérico
+  Dim x As Integer              'inteiro
+  Dim InicioExtenso As String   'Alfanumárico
+  Dim FimExtenso As String      'Alfanumérico
+  '
+  'atribui os parenteses no início e final do extenso
+  'caso não queira nada antes ou depois do extenso alterar para ""
   InicioExtenso = " (-"
   FimExtenso = "-) "
-  
+  '
+  'Verifica se não existe algo selecionado
+  'atribui Verdadeiro para blnInicio e sai da macro
   If Selection.Type = wdSelectionIP And Selection.Start = 0 Then blnNoInicio = True
   If blnNoInicio = True Then Exit Sub
-  
+  '
+  'Move para esquerda
+  'unit = por caracter
+  'count = um por vez
+  'Extend = move para o final do número extendido
   Selection.MoveLeft Unit:=wdCharacter, Count:=1, Extend:=wdExtend
-  
+  'quando achar um espaço em branco no iníclio do número selecionado
   While Selection.Text = " "
-  
+    'se chegou no início do documento e não achou espaço sai da macro
     If WordBasic.AtStartOfDocument() Then Exit Sub
+      'volta onde estava sem marcar nada
       Selection.ExtendMode = False
+      'Move para esquerda
+      'unit = por caracter
+      'count = um por vez
+      'Extend = move para final do número e pula para esquerda
       Selection.MoveLeft Unit:=wdCharacter, Count:=1, Extend:=wdMove
   Wend
-  
+  'volta para direita selecionando todo o número
   Selection.MoveRight Unit:=wdCharacter, Count:=1, Extend:=wdMove
   Selection.ExtendMode = True
-  
+  'procura na seleção
   With Selection.Find
+      'em direção ao início
       .Forward = False
+      'quando encontrar o fim, para.
       .Wrap = wdFindStop
+      'procura o espaço em branco
       .Execute FindText:=" "
   End With
-  
+  'exibe texto na janela imediata
   Debug.Print Selection.Text
+  'atribui texto selecionado à macro
+  'o CCur é para transformar de texto para monetário
   strValor = Extenso(CCur(Selection.Text))
-  
+  'desmarca seleção
   Selection.ExtendMode = False
-  
+  'volta para direita um caracter
   Selection.MoveRight Unit:=wdCharacter, Count:=1, Extend:=wdMove
   'caso queira tudo em minúscula, tire o UCASE abaixo 
   strTmp = InicioExtenso & UCASE(strValor) & FimExtenso
-  
+  'verifica se o valor atribuído tem mais de um caracter
+  'ou se é diferente de espaço
+  'Escreve o valor por extenso a direita do número digitado
   x = Len(strTmp)
   If x > 0 And strTmp <> " " Then
      Selection.TypeText Text:=strTmp
    End If
-
+'Rotina para sair da macro
 Fim_Err:
-
+'retira seleção e vai para o final do extenso
 Selection.ExtendMode = False
 Selection.MoveRight Unit:=wdCharacter, Count:=1, Extend:=wdMove
    Exit Sub
-
 End Sub
-
+'Final da torina ACD_Extenso()
+'------------------------------------------------------------------------------------------------------->
+'
+' Função extenso, responsável por converter o número em extenso
+'
 Function Extenso( _
   Valor As Currency, _
   Optional MoedaNoSingular As String = "real", _
@@ -191,7 +215,7 @@ Else
     End If
 End If
 
-If d > 1 Then '-> mudei aqui para arrumar as centenas
+If d > 1 Then '-> alterado para arrumar as centenas
     If u = 0 Then
         Dezena = varDezena2(d - 2) & Unidade(u)
         Else
@@ -256,7 +280,7 @@ Private Function ConcatCentenas(N As Currency) As String
   Dim TiraUmMil As Boolean
   Dim s As String, m As Currency
   
-  TiraUmMil = True 'Mude aqui para tirar o Um Mil (True=Mil False=Um Mil)
+  TiraUmMil = True 'Escolha do Mil (True=Mil False=Um Mil)
   
   s = ""
   m = N
@@ -283,7 +307,7 @@ Private Function ConcatCentenas(N As Currency) As String
       If SingleAlg(m) Then
         s = s & " e "
       Else
-        's = s & ", " 'retire aqui virguls
+        's = s & ", " 'retirada das vírgulas
         s = s & " "
     End If
     Else
@@ -303,7 +327,7 @@ Private Function ConcatCentenas(N As Currency) As String
       If SingleAlg(m) Then
         s = s & " e "
       Else
-        's = s & ", " 'retire aqui virgula
+        's = s & ", " 'retirada da vírgula
         s = s & " "
       End If
     Else
@@ -323,7 +347,7 @@ Private Function ConcatCentenas(N As Currency) As String
       If SingleAlg(m) Then
         s = s & " e "
       Else
-        '       s = s & ", " 'retire aqui sem vírgula no milhar
+        '       s = s & ", " 'retirada da vírgula do milhar
        s = s & " "
       End If
     Else
@@ -336,17 +360,16 @@ Private Function ConcatCentenas(N As Currency) As String
   If Milhar > 0 Then
   
     s = s & Centena(Milhar) & " mil "
-    'AQUI TIRA O UM MIL
+    'Verifica se quer "um mil" ou "mil
     If TiraUmMil Then
         If Left$(s, 7) = "um mil " Then s = Mid$(s, 4)
     End If
-
 
     If Menores > 0 Then
       If SingleAlg(m) Then
         s = s & "e "
       Else
-       ' s = s & ", " '->Retirei aqui para não sair vígula no milhar
+       ' s = s & ", " '->Retirada da vígula no milhar
       End If
     End If
   End If
