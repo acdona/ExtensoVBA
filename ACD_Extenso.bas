@@ -1,6 +1,6 @@
 Attribute VB_Name = "ExtensoACD"
 'Macro:         ACD_Extenso
-'Versão:        3.2 (Última atualização 03/02/20210)
+'Versão:        3.2 (Última atualização 03/02/2021)
 'Finalidade:    Converte um valor numérico em uma string
 '               com o extenso monetário correspondente.
 'Linguagem:     VBA
